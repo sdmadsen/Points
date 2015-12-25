@@ -27,6 +27,18 @@ if "Win" == system.getInfo( "platformName" ) then
     require("win_fix")
 end
 
+function loadSounds()
+	CchimeCount = 22
+	
+	soundTable = {}
+	soundTable[0] = audio.loadSound("Sounds/square.wav")
+	for i=1, CchimeCount do
+		local filePath = string.format("Sounds/Chimes/chime-%04d.wav",i)
+		soundTable[i] = audio.loadSound(filePath)
+	end
+
+end
+
 function tablelength(T)
   local count = 0
   for _ in pairs(T) do count = count + 1 end
@@ -82,9 +94,10 @@ function setupGame()
 	CpointSpread = 50
 	CpointXoffset = -15
 	CpointYoffset = 25
+	CtouchCushion = 2
 
 	CcolumnCount = 6
-	CmoveCount = 2
+	CmoveCount = 20
 
 	pointCache = {}
 	pointCacheSet = {}
@@ -98,12 +111,8 @@ function setupGame()
 
 	remainingMoves = {}
 	remainingMoves["number"] = CmoveCount
-	remainingMoves["display"] = display.newText( remainingMoves["number"] .. " moves left", display.contentCenterX, 0, native.systemFont, 12 )
-	remainingMoves["display"]:setFillColor( 0 )
 	score = {}
 	score["number"] = 0
-	score["display"] = display.newText( score["number"], display.contentCenterX, 25, native.systemFont, 32 )
-	score["display"]:setFillColor( 0 )
 	
 	currentPlayer = 1
 			
@@ -127,20 +136,62 @@ function buildTable()
 	end
 end
 
-function resetTable()
-	selectAll = 0
-	sequenceLength = 0
-	score["number"] = 0
+local function onAlertComplete( event )
+   if event.action == "clicked" then
+        local i = event.index
+        if i == 1 then
+            clearScreen()
+			displayMainMenu()
+        elseif i == 2 then
+            -- Do nothing. Cancel button
+        end
+    end
+end
+
+function handleMainMenuGameButtonEvent( event )
+
+    if ( "ended" == event.phase ) then
+		local alert = native.showAlert( "Main Menu", "Are you sure you want to quit the current game?", { "OK", "Cancel" }, onAlertComplete )
+		--clearScreen()
+		--displayMainMenu()
+    end
+end
+
+function buildBoardDisplays()
 	score["display"] = display.newText( score["number"], display.contentCenterX, 25, native.systemFont, 32 )
 	score["display"]:setFillColor( 0 )
 	remainingMoves["number"] = CmoveCount
 	remainingMoves["display"] = display.newText( remainingMoves["number"] .. " moves left", display.contentCenterX, 0, native.systemFont, 12 )
 	remainingMoves["display"]:setFillColor( 0 )
+	
+	mainMenuGameButton = widget.newButton
+	{
+		x = display.contentCenterX,
+		y = display.contentCenterY * 1.95,
+		id = "mainMenu",
+		label = "Main Menu",
+		onEvent = handleMainMenuGameButtonEvent,
+		emboss = false,
+		--properties for a rounded rectangle button...
+		shape="roundedRect",
+		width = display.contentCenterX,
+		height = display.contentHeight / 10,
+		cornerRadius = 4,
+		fillColor = { default={ 1, 0, 0, 1 }, over={ 1, 0, 0.1, 0.4 } },
+		labelColor = { default={ 1, 1, 1 }, over={ 1, 1, 1 } }
+	}
+end
+
+function resetTable()
+	selectAll = 0
+	sequenceLength = 0
+	score["number"] = 0
 	pointArray = {}
 	currentColor = ""
 	pointCache = {}
 	pointCache = deepCopy(pointCacheSet)
 	buildTable()
+	buildBoardDisplays()
 end
 
 function clearScreen()
@@ -160,6 +211,7 @@ function clearScreen()
 	
 	remainingMoves["display"]:removeSelf()
 	score["display"]:removeSelf()
+	mainMenuGameButton:removeSelf()
 end
 
 function handleMainMenuButtonEvent( event )
@@ -185,6 +237,7 @@ function handleRestartButtonEvent( event )
 		setupGame()
 		buildCache()
 		buildTable()
+		buildBoardDisplays()
     end
 end
 
@@ -349,6 +402,13 @@ function selectPoint(row, col)
 	pointArray[col][row]["point"].strokeWidth = 2
 	pointArray[col][row]["point"]:setStrokeColor( 0 )
 	pointArray[col][row]["selected"] = true
+	
+	if ( sequenceLength <= CchimeCount ) then
+		audio.play(soundTable[sequenceLength])
+	else
+		audio.play(soundTable[CchimeCount - (math.fmod(CchimeCount,sequenceLength))])
+	end
+	
 end
 
 function removePoint(row, col)
@@ -402,7 +462,11 @@ function selectAllPoints( color )
 			end
 		end
 	end
-	system.vibrate()
+	
+	if ( selectAll == 1 ) then
+		audio.play(soundTable[0])
+		system.vibrate()
+	end
 end
 
 function resetSelection()
@@ -429,8 +493,8 @@ function onObjectTouch( event )
 						currentColor = pointArray[i][j]["color"]
 					end
 					if (pointArray[i][j]["color"] == currentColor or currentColor == "") then
-						if event.x >= (pointArray[i][j]["point"].x - (CpointRadius * 1.5)) and event.x <= (pointArray[i][j]["point"].x + (CpointRadius * 1.5)) and
-							event.y >= (pointArray[i][j]["point"].y - (CpointRadius * 1.5)) and event.y <= (pointArray[i][j]["point"].y + (CpointRadius * 1.5)) then
+						if event.x >= (pointArray[i][j]["point"].x - (CpointRadius * CtouchCushion)) and event.x <= (pointArray[i][j]["point"].x + (CpointRadius * CtouchCushion)) and
+							event.y >= (pointArray[i][j]["point"].y - (CpointRadius * CtouchCushion)) and event.y <= (pointArray[i][j]["point"].y + (CpointRadius * CtouchCushion)) then
 							if sequenceLength <=1 or (sequenceLength > 1 and not (selectedSequence[sequenceLength - 1]["row"] == j and selectedSequence[sequenceLength - 1]["column"] == i)) then
 								if sequenceLength == 0 or
 								  ((selectedSequence[sequenceLength]["row"] == j and (selectedSequence[sequenceLength]["column"] == i - 1 
@@ -498,6 +562,7 @@ function onObjectTouch( event )
 				revertBorders()
 				selectedSequence = {}
 				sequenceLength = 0
+				selectAll = 0
 			end
 		end
 	end
@@ -507,6 +572,9 @@ end
 function handleStartButtonEvent( event )
 
     if ( "ended" == event.phase ) then
+		players[1]["name"] = player1Name.text
+		players[2]["name"] = player2Name.text
+		
 		startButton:removeSelf()
 		title:removeSelf()
 		player1Name:removeSelf()
@@ -515,6 +583,7 @@ function handleStartButtonEvent( event )
 		setupGame()
 		buildCache()
 		buildTable()
+		buildBoardDisplays()
     end
 end
 
@@ -616,6 +685,7 @@ end
 
 
 canvas:addEventListener( "touch", onObjectTouch )
+loadSounds()
 displayMainMenu()
 --setupGame()
 --buildCache()
