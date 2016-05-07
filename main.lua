@@ -13,18 +13,24 @@ local canvas = fingerPaint.newCanvas()
 canvas:setCanvasColor(0,0,0,0)
 canvas:setPaintColor(0,0,0,0)
 
+CdefaultPlayerName = "Player "
+
+
 --Setup Players
-players = {}
-players[1] = {}
-players[2] = {}
-players[1]["name"] = "Player 1"
-players[1]["score"] = 0
-players[2]["name"] = "Player 2"
-players[2]["score"] = 0
+playerCount = 2
 
 
 if "Win" == system.getInfo( "platformName" ) then
     require("win_fix")
+end
+
+function setupPlayers()
+	players = {}
+	for i=1, playerCount do
+		players[i] = {}
+		players[i]["name"] = "Player " .. i
+		players[i]["score"] = 0
+	end
 end
 
 function loadSounds()
@@ -70,8 +76,8 @@ function setPointColor( point, color )
 		point:setFillColor( 0, 0, 1 )
 	elseif (color == "green") then
 		point:setFillColor( 0, 1, 0 )
-	elseif (color == "yellow") then
-		point:setFillColor( 1, 1, 0 )
+	elseif (color == "orange") then
+		point:setFillColor( 1, .5, 0 )
 	elseif (color == "purple") then
 		point:setFillColor( 1, 0, 1 )
 	end
@@ -106,7 +112,7 @@ function setupGame()
 	sequenceLength = 0
 	selectAll = 0
 	lineArray = {}
-	colorOptions = {"red","blue","green","yellow","purple"}
+	colorOptions = {"red","blue","green","orange","purple"}
 	currentColor = ""
 
 	remainingMoves = {}
@@ -141,6 +147,7 @@ local function onAlertComplete( event )
         local i = event.index
         if i == 1 then
             clearScreen()
+			displayLoadScreen()
 			displayMainMenu()
         elseif i == 2 then
             -- Do nothing. Cancel button
@@ -152,8 +159,6 @@ function handleMainMenuGameButtonEvent( event )
 
     if ( "ended" == event.phase ) then
 		local alert = native.showAlert( "Main Menu", "Are you sure you want to quit the current game?", { "OK", "Cancel" }, onAlertComplete )
-		--clearScreen()
-		--displayMainMenu()
     end
 end
 
@@ -411,9 +416,11 @@ function selectPoint(row, col)
 	
 end
 
-function removePoint(row, col)
-	score["number"] = score["number"] + 1
-	score["display"].text = score["number"]
+function removePoint(row, col, countScore)
+	if ( countScore == true ) then
+		score["number"] = score["number"] + 1
+		score["display"].text = score["number"]
+	end
 	pointArray[col][row]["point"]:removeSelf()
 	for i=row, CcolumnCount do
 		pointArray[col][i]["point"].y = pointArray[col][i]["point"].y + CpointSpread
@@ -477,10 +484,35 @@ function resetSelection()
 		end
 	end
 	
-	if sequenceLength > 1 then
+	if sequenceLength >= 1 then
 		for i=1, sequenceLength  do
 			selectPoint(selectedSequence[i]["row"],selectedSequence[i]["column"])
 		end
+	end
+end
+
+function checkForMoves()
+	for i=1, CcolumnCount do
+		for j=1, CcolumnCount do
+			if ( i > 1 ) then
+				if ( pointArray[i][j]["color"] == pointArray[i-1][j]["color"] ) then
+					return 1
+				end
+			end
+			if ( j > 1 ) then
+				if ( pointArray[i][j]["color"] == pointArray[i][j-1]["color"] ) then
+					return 1
+				end
+			end
+		end
+	end
+	
+	return 0
+end
+
+function removeBottomRow()
+	for i=1, CcolumnCount do
+		removePoint(1,i,false)
 	end
 end
 		
@@ -548,9 +580,12 @@ function onObjectTouch( event )
 				for i=1, CcolumnCount do
 					for j=CcolumnCount, 1, -1 do
 						if (pointArray[i][j]["selected"] == true) then
-							removePoint(j,i)
+							removePoint(j,i,true)
 						end
 					end
+				end
+				while ( checkForMoves() == 0 ) do
+					removeBottomRow()
 				end
 			end
 			if remainingMoves["number"] == 0 then
@@ -572,19 +607,50 @@ end
 function handleStartButtonEvent( event )
 
     if ( "ended" == event.phase ) then
-		players[1]["name"] = player1Name.text
-		players[2]["name"] = player2Name.text
+		if ( player1Name.text ~= "" ) then
+			players[1]["name"] = player1Name.text
+		else
+			players[1]["name"] = CdefaultPlayerName .. "1"
+		end
+		if ( player2Name.text ~= "" ) then
+			players[2]["name"] = player2Name.text
+		else
+			players[2]["name"] = CdefaultPlayerName .. "2"
+		end
 		
 		startButton:removeSelf()
+		backButton:removeSelf()
 		title:removeSelf()
 		player1Name:removeSelf()
 		player2Name:removeSelf()
+		pointsLogo:removeSelf()
 		
 		setupGame()
 		buildCache()
 		buildTable()
 		buildBoardDisplays()
+		while ( checkForMoves() == 0 ) do
+			removeBottomRow()
+		end
     end
+end
+
+function handleBackButtonEvent( event )
+	if (event.phase == "ended") then
+		if ( gameState == "setup" ) then
+			startButton:removeSelf()
+			title:removeSelf()
+			player1Name:removeSelf()
+			player2Name:removeSelf()
+		else
+			licensesButton:removeSelf()
+		end
+		backButton:removeSelf()
+		pointsLogo:removeSelf()
+		
+		displayLoadScreen()
+		displayMainMenu()
+	end
 end
 
 function playerNameFunction( event )
@@ -606,9 +672,27 @@ function displayGameSetup()
 	
 	startButton = widget.newButton
 	{
-		label = "button",
+		label = "Start Game",
 		labelColor = { default={ 1, 1, 1 }, over={ 0, 0, 0, 0.5 } },
 		onEvent = handleStartButtonEvent,
+		emboss = false,
+		--properties for a rounded rectangle button...
+		shape="roundedRect",
+		width = display.contentCenterX,
+		height = display.contentHeight / 10,
+		cornerRadius = 4,
+		fillColor = { default={ 0, 1, 0, 1 }, over={ 0, 1, 0, 0.4 } }
+	}
+	
+	-- Center the button
+	startButton.x = display.contentCenterX
+	startButton.y = display.contentCenterY * 1.5
+	
+	backButton = widget.newButton
+	{
+		label = "Back",
+		labelColor = { default={ 1, 1, 1 }, over={ 0, 0, 0, 0.5 } },
+		onEvent = handleBackButtonEvent,
 		emboss = false,
 		--properties for a rounded rectangle button...
 		shape="roundedRect",
@@ -618,12 +702,8 @@ function displayGameSetup()
 		fillColor = { default={ 1, 0, 0, 1 }, over={ 1, 0, 0.1, 0.4 } }
 	}
 
-	-- Change the button's label text
-	startButton:setLabel( "Start Game" )
-	
-	-- Center the button
-	startButton.x = display.contentCenterX
-	startButton.y = display.contentCenterY * 1.5
+	backButton.x = display.contentCenterX
+	backButton.y = display.contentCenterY * 1.75
 
 	-- Eventually add ability for more than two players
 	-- playerNumberLabel = display.newText( "# of players", display.contentCenterX, 100, native.systemFont, 16 )
@@ -647,8 +727,11 @@ function handleSetupButtonEvent( event )
 
     if ( "ended" == event.phase ) then
 		setupButton:removeSelf()
+		aboutButton:removeSelf()
 		title:removeSelf()
+		pointsLogo.alpha = 0.25
 		
+		setupPlayers()
 		displayGameSetup()
 		--setupGame()
 		--buildCache()
@@ -656,16 +739,36 @@ function handleSetupButtonEvent( event )
     end
 end
 
-function displayMainMenu()
-	gameState = "menu"
-	title = display.newText( "Points", display.contentCenterX, 20, native.systemFont, 96 )
-	title:setFillColor( 0 )
-	
-	setupButton = widget.newButton
+function handleLicenseButtonEvent( event )
+
+    if ( "ended" == event.phase ) then
+		system.openURL( "https://github.com/sdmadsen/Points/issues/12" )
+    end
+end
+
+function displayAboutSetup()
+	licensesButton = widget.newButton
 	{
-		label = "button",
+		label = "Licenses",
 		labelColor = { default={ 1, 1, 1 }, over={ 0, 0, 0, 0.5 } },
-		onEvent = handleSetupButtonEvent,
+		onEvent = handleLicenseButtonEvent,
+		emboss = false,
+		--properties for a rounded rectangle button...
+		shape="roundedRect",
+		width = display.contentCenterX,
+		height = display.contentHeight / 10,
+		cornerRadius = 4,
+		fillColor = { default={ 0, 0, 1, 1 }, over={ 0, 0, 1, 0.4 } }
+	}
+
+	licensesButton.x = display.contentCenterX
+	licensesButton.y = display.contentCenterY * 1.5
+
+	backButton = widget.newButton
+	{
+		label = "Back",
+		labelColor = { default={ 1, 1, 1 }, over={ 0, 0, 0, 0.5 } },
+		onEvent = handleBackButtonEvent,
 		emboss = false,
 		--properties for a rounded rectangle button...
 		shape="roundedRect",
@@ -675,16 +778,87 @@ function displayMainMenu()
 		fillColor = { default={ 1, 0, 0, 1 }, over={ 1, 0, 0.1, 0.4 } }
 	}
 
-	-- Center the button
-	setupButton.x = display.contentCenterX
-	setupButton.y = display.contentCenterY
+	backButton.x = display.contentCenterX
+	backButton.y = display.contentCenterY * 1.75
+end
 
-	-- Change the button's label text
-	setupButton:setLabel( "Setup Game" )
+function handleAboutButtonEvent( event )
+	if ( event.phase == "ended" ) then
+		setupButton:removeSelf()
+		aboutButton:removeSelf()
+		title:removeSelf()
+		pointsLogo.alpha = 0.1
+		
+		gameState = "about"
+		
+		displayAboutSetup()
+	end
+end
+
+
+function fitImage( displayObject, fitWidth, fitHeight, enlarge )
+	local scaleFactor = fitHeight / displayObject.height 
+	local newWidth = displayObject.width * scaleFactor
+	if newWidth > fitWidth then
+		scaleFactor = fitWidth / displayObject.width 
+	end
+	if not enlarge and scaleFactor > 1 then
+		return
+	end
+	displayObject:scale( scaleFactor, scaleFactor )
+end
+
+function displayLoadScreen()
+	gameState = "loading"
+	pointsLogo = display.newImage( "iTunesArtwork.png", display.contentCenterX, display.contentCenterY )
+	fitImage( pointsLogo, display.contentCenterX, display.contentCenterX, false )
+	
+end
+
+
+function displayMainMenu()
+	gameState = "menu"
+	title = display.newText( "Points", display.contentCenterX, display.contentCenterY * .25, native.systemFont, 96 )
+	title:setFillColor( 0 )
+	
+	setupButton = widget.newButton
+	{
+		label = "Setup Game",
+		labelColor = { default={ 1, 1, 1 }, over={ 0, 0, 0, 0.5 } },
+		onEvent = handleSetupButtonEvent,
+		emboss = false,
+		--properties for a rounded rectangle button...
+		shape="roundedRect",
+		width = display.contentCenterX,
+		height = display.contentHeight / 10,
+		cornerRadius = 4,
+		fillColor = { default={ 0, 1, 0, 1 }, over={ 0, 1, 0, 0.4 } }
+	}
+
+	setupButton.x = display.contentCenterX
+	setupButton.y = display.contentCenterY * 1.5
+	
+	aboutButton = widget.newButton
+	{
+		label = "About",
+		labelColor = { default={ 1, 1, 1 }, over={ 0, 0, 0, 0.5 } },
+		onEvent = handleAboutButtonEvent,
+		emboss = false,
+		--properties for a rounded rectangle button...
+		shape="roundedRect",
+		width = display.contentCenterX,
+		height = display.contentHeight / 10,
+		cornerRadius = 4,
+		fillColor = { default={ 1, 0, 0, 1 }, over={ 1, 0, 0.1, 0.4 } }
+	}
+
+	aboutButton.x = display.contentCenterX
+	aboutButton.y = display.contentCenterY * 1.75
 end
 
 
 canvas:addEventListener( "touch", onObjectTouch )
+displayLoadScreen()
 loadSounds()
 displayMainMenu()
 --setupGame()
