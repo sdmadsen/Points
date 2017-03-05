@@ -25,11 +25,44 @@ if "Win" == system.getInfo( "platformName" ) then
 end
 
 function setupPlayers()
-	players = {}
-	for i=1, playerCount do
-		players[i] = {}
-		players[i]["name"] = "Player " .. i
-		players[i]["score"] = 0
+	if ( players == nil ) then
+		players = {}
+		for i=1, playerCount do
+			players[i] = {}
+			players[i]["name"] = CdefaultPlayerName .. i
+			players[i]["score"] = 0
+			
+			players[i]["textbox"] = native.newTextField( display.contentCenterX, display.contentCenterY * .2 + (i * 40) , display.contentCenterX , 36 )
+			players[i]["textbox"].placeholder = players[i]["name"]
+		end
+	else
+		topIndex = tablelength(players)
+		if ( topIndex < playerCount ) then
+			for i=topIndex + 1, playerCount do
+				players[i] = {}
+				players[i]["name"] = CdefaultPlayerName .. i
+				players[i]["score"] = 0
+				
+				players[i]["textbox"] = native.newTextField( display.contentCenterX, display.contentCenterY * .2 + (i * 40) , display.contentCenterX , 36 )
+				players[i]["textbox"].placeholder = players[i]["name"]
+			end
+		elseif ( topIndex > playerCount ) then
+			if (players[topIndex]["textbox"] ~= nil) then
+				players[topIndex]["textbox"]:removeSelf()
+			end
+			players[topIndex] = nil
+		else
+			for i=1, playerCount do
+			players[i]["score"] = 0
+			
+			players[i]["textbox"] = native.newTextField( display.contentCenterX, display.contentCenterY * .2 + (i * 40) , display.contentCenterX , 36 )
+			if ( players[i]["name"] == CdefaultPlayerName .. i ) then
+				players[i]["textbox"].placeholder = players[i]["name"]
+			else
+				players[i]["textbox"].text = players[i]["name"]
+			end
+		end
+		end
 	end
 end
 
@@ -103,7 +136,7 @@ function setupGame()
 	CtouchCushion = 2
 
 	CcolumnCount = 6
-	CmoveCount = 20
+	CmoveCount = 1
 
 	pointCache = {}
 	pointCacheSet = {}
@@ -156,7 +189,6 @@ local function onAlertComplete( event )
 end
 
 function handleMainMenuGameButtonEvent( event )
-
     if ( "ended" == event.phase ) then
 		local alert = native.showAlert( "Main Menu", "Are you sure you want to quit the current game?", { "OK", "Cancel" }, onAlertComplete )
     end
@@ -222,11 +254,14 @@ end
 function handleMainMenuButtonEvent( event )
 
     if ( "ended" == event.phase ) then
-		player1Name:removeSelf()
-		player2Name:removeSelf()
+		for i=1, playerCount do
+			players[i]["endDisplay"]:removeSelf()
+		end
+
 		winnerName:removeSelf()
 		mainMenuButton:removeSelf()
 		restartButton:removeSelf()
+		displayLoadScreen()
 		displayMainMenu()
     end
 end
@@ -234,8 +269,10 @@ end
 function handleRestartButtonEvent( event )
 
     if ( "ended" == event.phase ) then
-		player1Name:removeSelf()
-		player2Name:removeSelf()
+		for i=1, playerCount do
+			players[i]["endDisplay"]:removeSelf()
+		end
+
 		winnerName:removeSelf()
 		mainMenuButton:removeSelf()
 		restartButton:removeSelf()
@@ -262,7 +299,7 @@ function displayEndScreen()
 	sequenceLength = 0
 	gameState = "score"
 	
-	if ( currentPlayer == 1 ) then
+	if ( currentPlayer < playerCount ) then
 		options = 
 		{
 			text = score["number"],     
@@ -306,46 +343,64 @@ function displayEndScreen()
 			labelColor = { default={ 1, 1, 1 }, over={ 1, 1, 1 } }
 		}
 	else
-		options = 
-		{
-			text = players[1]["name"] .. ": " .. players[1]["score"],     
-			x = display.contentCenterX,
-			y = 20,
-			width = display.contentWidth,     --required for multi-line and alignment
-			font = native.systemFont,   
-			fontSize = 24,
-			align = "center"  --new alignment parameter
-		}
-		player1Name = display.newText( options )
-		player1Name:setFillColor( 0 )
-		options = 
-		{
-			text = players[2]["name"] .. ": " .. players[2]["score"],     
-			x = display.contentCenterX,
-			y = 100,
-			width = display.contentWidth,     --required for multi-line and alignment
-			font = native.systemFont,   
-			fontSize = 24,
-			align = "center"  --new alignment parameter
-		}
-		player2Name = display.newText( options )
-		player2Name:setFillColor( 0 )
-		
-		local key, max = 1, players[1]["score"]
-		for k, v in ipairs(players) do
-			if players[k]["score"] > max then
-				key, max = k, v
+		winner = 1
+		tie = {}
+		for i=1, playerCount do
+			options = 
+			{
+				text = players[i]["name"] .. ": " .. players[i]["score"],     
+				x = display.contentCenterX,
+				y = display.contentCenterY * .05 + ((i - 1) * 40),
+				width = display.contentWidth,     --required for multi-line and alignment
+				font = native.systemFont,   
+				fontSize = 24,
+				align = "center"  --new alignment parameter
+			}
+			players[i]["endDisplay"] = display.newText( options )
+			players[i]["endDisplay"]:setFillColor( 0 )
+
+			if (players[i]["score"] > players[winner]["score"]) then
+				winner = i
+				tie = {}
+			elseif (players[i]["score"] == players[winner]["score"]) then
+				numTied = tablelength(tie)
+				if (numTied == 0 and i ~= 1) then
+					tie[1] = winner
+					tie[2] = i
+				else
+					tie[numTied + 1] = i
+				end
 			end
 		end
-		
+
+		numTied = tablelength(tie)
+		if (numTied == 0) then
+			winnerText = players[winner]["name"] .. " wins!"
+		else
+			winnerText = ""
+			for i=1, numTied do
+				if (i == numTied) then
+					winnerText = winnerText .. ((i == 2) and " " or "") .. "and "
+				end
+
+				winnerText = winnerText .. players[tie[i]]["name"]
+
+				if (i == numTied) then
+					winnerText = winnerText .. " tied!"
+				elseif (numTied > 2) then
+					winnerText = winnerText .. ", "
+				end
+			end
+		end
+
 		options = 
 		{
-			text = players[key]["name"] .. " wins!",     
+			text = winnerText,     
 			x = display.contentCenterX,
 			y = display.contentCenterY * 1.2,
 			width = display.contentWidth,     --required for multi-line and alignment
 			font = native.systemFont,   
-			fontSize = 48,
+			fontSize = 40,
 			align = "center"  --new alignment parameter
 		}
 		winnerName = display.newText( options )
@@ -607,23 +662,22 @@ end
 function handleStartButtonEvent( event )
 
     if ( "ended" == event.phase ) then
-		if ( player1Name.text ~= "" ) then
-			players[1]["name"] = player1Name.text
-		else
-			players[1]["name"] = CdefaultPlayerName .. "1"
+		for i=1, playerCount do
+			if ( players[i]["textbox"].text ~= nil or players[i]["textbox"].text ~= "" ) then
+				players[i]["name"] = players[i]["textbox"].text
+				players[i]["textbox"]:removeSelf()
+			else
+				players[i]["name"] = CdefaultPlayerName .. i
+			end
 		end
-		if ( player2Name.text ~= "" ) then
-			players[2]["name"] = player2Name.text
-		else
-			players[2]["name"] = CdefaultPlayerName .. "2"
-		end
-		
+
 		startButton:removeSelf()
 		backButton:removeSelf()
+		playerCountText:removeSelf()
 		title:removeSelf()
-		player1Name:removeSelf()
-		player2Name:removeSelf()
 		pointsLogo:removeSelf()
+		decreasePlayers:removeSelf()
+		increasePlayers:removeSelf()
 		
 		setupGame()
 		buildCache()
@@ -639,9 +693,13 @@ function handleBackButtonEvent( event )
 	if (event.phase == "ended") then
 		if ( gameState == "setup" ) then
 			startButton:removeSelf()
+			playerCountText:removeSelf()
 			title:removeSelf()
-			player1Name:removeSelf()
-			player2Name:removeSelf()
+			decreasePlayers:removeSelf()
+			increasePlayers:removeSelf()
+			for i=1, playerCount do
+				players[i]["textbox"]:removeSelf()
+			end
 		else
 			licensesButton:removeSelf()
 		end
@@ -653,22 +711,38 @@ function handleBackButtonEvent( event )
 	end
 end
 
-function playerNameFunction( event )
-	
-    if ( event.phase == "ended" or event.phase == "submitted" ) then
-        -- user begins editing numericField
-		if ( event.target.placeholder == "Player 1" ) then
-			players[1]["name"] = event.target.text
-		else
-			players[2]["name"] = event.target.text
-		end
-    end   
+function decreasePlayersHandler( event )
+	if ( playerCount > 1 ) then
+		playerCount = playerCount - 1
+		playerCountText.text = playerCount
+		setupPlayers()
+	end
+end
+
+function increasePlayersHandler( event )
+	if ( playerCount < 4 ) then
+		playerCount = playerCount + 1
+		playerCountText.text = playerCount
+		setupPlayers()
+	end
 end
 
 function displayGameSetup()
 	gameState = "setup"
-	title = display.newText( "Setup Game", display.contentCenterX, 10, native.systemFont, 48 )
+	playerCountText = display.newText( playerCount, display.contentCenterX, display.contentCenterY * .025, native.systemFont, 48 )
+	playerCountText:setFillColor( 0 )
+	title = display.newText( "Players", display.contentCenterX, display.contentCenterY * .15, native.systemFont, 18 )
 	title:setFillColor( 0 )
+	
+	decreasePlayers = display.newPolygon( display.contentCenterX * .25, display.contentCenterY * .025, {0,20, 20,40, 20,0} )
+	decreasePlayers:setFillColor( 0 )
+	
+	increasePlayers = display.newPolygon( display.contentCenterX * 1.75, display.contentCenterY * .025, {0,-20, -20,-40, -20,0} )
+	increasePlayers:setFillColor( 0 )
+	
+	decreasePlayers:addEventListener("touch", decreasePlayersHandler)
+	increasePlayers:addEventListener("touch", increasePlayersHandler)
+	
 	
 	startButton = widget.newButton
 	{
@@ -681,7 +755,7 @@ function displayGameSetup()
 		width = display.contentCenterX,
 		height = display.contentHeight / 10,
 		cornerRadius = 4,
-		fillColor = { default={ 0, 1, 0, 1 }, over={ 0, 1, 0, 0.4 } }
+		fillColor = { default={ 0, .8, 0, 1 }, over={ 0, .8, 0, 0.4 } }
 	}
 	
 	-- Center the button
@@ -704,23 +778,6 @@ function displayGameSetup()
 
 	backButton.x = display.contentCenterX
 	backButton.y = display.contentCenterY * 1.75
-
-	-- Eventually add ability for more than two players
-	-- playerNumberLabel = display.newText( "# of players", display.contentCenterX, 100, native.systemFont, 16 )
-	-- playerNumberLabel:setFillColor( 0 )
-	-- playerNumber = native.newTextField( display.contentCenterX, 150, 220, 36 )
-	-- playerNumber.inputType = "number"
-	-- playerNumber.text = 2
-	-- playerNumber:addEventListener( "userInput", handlerFunction )
-	
-	player1Name = native.newTextField( display.contentCenterX, display.contentCenterY / 2, 220, 36 )
-	player1Name.placeholder = "Player 1"
-	player1Name:addEventListener( "userInput", playerNameFunction )
-
-	player2Name = native.newTextField( display.contentCenterX, display.contentCenterY, 220, 36 )
-	player2Name.placeholder = "Player 2"
-	player2Name:addEventListener( "userInput", playerNameFunction )
-
 end
 
 function handleSetupButtonEvent( event )
@@ -733,9 +790,6 @@ function handleSetupButtonEvent( event )
 		
 		setupPlayers()
 		displayGameSetup()
-		--setupGame()
-		--buildCache()
-		--buildTable()
     end
 end
 
@@ -795,7 +849,6 @@ function handleAboutButtonEvent( event )
 	end
 end
 
-
 function fitImage( displayObject, fitWidth, fitHeight, enlarge )
 	local scaleFactor = fitHeight / displayObject.height 
 	local newWidth = displayObject.width * scaleFactor
@@ -815,7 +868,6 @@ function displayLoadScreen()
 	
 end
 
-
 function displayMainMenu()
 	gameState = "menu"
 	title = display.newText( "Points", display.contentCenterX, display.contentCenterY * .25, native.systemFont, 96 )
@@ -832,7 +884,7 @@ function displayMainMenu()
 		width = display.contentCenterX,
 		height = display.contentHeight / 10,
 		cornerRadius = 4,
-		fillColor = { default={ 0, 1, 0, 1 }, over={ 0, 1, 0, 0.4 } }
+		fillColor = { default={ 0, .8, 0, 1 }, over={ 0, .8, 0, 0.4 } }
 	}
 
 	setupButton.x = display.contentCenterX
