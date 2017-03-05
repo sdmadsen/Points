@@ -136,7 +136,7 @@ function setupGame()
 	CtouchCushion = 2
 
 	CcolumnCount = 6
-	CmoveCount = 1
+	CmoveCount = 20
 
 	pointCache = {}
 	pointCacheSet = {}
@@ -359,16 +359,17 @@ function displayEndScreen()
 			players[i]["endDisplay"] = display.newText( options )
 			players[i]["endDisplay"]:setFillColor( 0 )
 
-			if (players[i]["score"] > players[winner]["score"]) then
+			if (players[i]["score"] > players[winner]["score"]) or (i == 1) then
 				winner = i
 				tie = {}
 			elseif (players[i]["score"] == players[winner]["score"]) then
-				numTied = tablelength(tie)
-				if (numTied == 0 and i ~= 1) then
+				numTies = tablelength(tie)
+				if (numTies == 0 and i ~= 1) then
 					tie[1] = winner
 					tie[2] = i
 				else
-					tie[numTied + 1] = i
+					tie[numTies + 1] = i
+					print("here")
 				end
 			end
 		end
