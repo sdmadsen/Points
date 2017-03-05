@@ -664,12 +664,12 @@ function handleStartButtonEvent( event )
 
     if ( "ended" == event.phase ) then
 		for i=1, playerCount do
-			if ( players[i]["textbox"].text ~= nil or players[i]["textbox"].text ~= "" ) then
+			if ( players[i]["textbox"].text ~= "" ) then
 				players[i]["name"] = players[i]["textbox"].text
-				players[i]["textbox"]:removeSelf()
 			else
 				players[i]["name"] = CdefaultPlayerName .. i
 			end
+			players[i]["textbox"]:removeSelf()
 		end
 
 		startButton:removeSelf()
