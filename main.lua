@@ -5,8 +5,9 @@
 -----------------------------------------------------------------------------------------
 
 local widget = require( "widget" )
+backgroundColor = { .8, .8, .8 }
 
-display.setDefault( "background", 255, 255, 255 )
+display.setDefault( "background", .8, .8, .8 )
 
 fingerPaint = require("fingerPaint")
 local canvas = fingerPaint.newCanvas()
@@ -110,7 +111,7 @@ function setPointColor( point, color )
 	elseif (color == "green") then
 		point:setFillColor( 0, 1, 0 )
 	elseif (color == "orange") then
-		point:setFillColor( 1, .5, 0 )
+		point:setFillColor( 1, .7, 0 )
 	elseif (color == "purple") then
 		point:setFillColor( 1, 0, 1 )
 	end
@@ -215,7 +216,7 @@ function buildBoardDisplays()
 		height = display.contentHeight / 10,
 		cornerRadius = 4,
 		fillColor = { default={ 1, 0, 0, 1 }, over={ 1, 0, 0.1, 0.4 } },
-		labelColor = { default={ 1, 1, 1 }, over={ 1, 1, 1 } }
+		labelColor = { default=backgroundColor, over=backgroundColor }
 	}
 end
 
@@ -340,7 +341,7 @@ function displayEndScreen()
 			height = display.contentHeight / 10,
 			cornerRadius = 4,
 			fillColor = { default={ 1, 0, 0, .8 }, over={ 1, 0, 0.1, 0.6 } },
-			labelColor = { default={ 1, 1, 1 }, over={ 1, 1, 1 } }
+			labelColor = { default=backgroundColor, over=backgroundColor }
 		}
 	else
 		winner = 1
@@ -421,7 +422,7 @@ function displayEndScreen()
 			height = display.contentHeight / 10,
 			cornerRadius = 4,
 			fillColor = { default={ 0, .6, 0, 1 }, over={ 0, .6, 0.2, 0.6 } },
-			labelColor = { default={ 1, 1, 1 }, over={ 1, 1, 1 } }
+			labelColor = { default=backgroundColor, over=backgroundColor }
 		}
 		mainMenuButton = widget.newButton
 		{
@@ -437,7 +438,7 @@ function displayEndScreen()
 			height = display.contentHeight / 10,
 			cornerRadius = 4,
 			fillColor = { default={ 1, 0, 0, 1 }, over={ 1, 0, 0.1, 0.4 } },
-			labelColor = { default={ 1, 1, 1 }, over={ 1, 1, 1 } }
+			labelColor = { default=backgroundColor, over=backgroundColor }
 		}
 	end
 end
@@ -748,7 +749,7 @@ function displayGameSetup()
 	startButton = widget.newButton
 	{
 		label = "Start Game",
-		labelColor = { default={ 1, 1, 1 }, over={ 0, 0, 0, 0.5 } },
+		labelColor = { default=backgroundColor, over={ 0, 0, 0, 0.5 } },
 		onEvent = handleStartButtonEvent,
 		emboss = false,
 		--properties for a rounded rectangle button...
@@ -766,7 +767,7 @@ function displayGameSetup()
 	backButton = widget.newButton
 	{
 		label = "Back",
-		labelColor = { default={ 1, 1, 1 }, over={ 0, 0, 0, 0.5 } },
+		labelColor = { default=backgroundColor, over={ 0, 0, 0, 0.5 } },
 		onEvent = handleBackButtonEvent,
 		emboss = false,
 		--properties for a rounded rectangle button...
@@ -805,7 +806,7 @@ function displayAboutSetup()
 	licensesButton = widget.newButton
 	{
 		label = "Licenses",
-		labelColor = { default={ 1, 1, 1 }, over={ 0, 0, 0, 0.5 } },
+		labelColor = { default=backgroundColor, over={ 0, 0, 0, 0.5 } },
 		onEvent = handleLicenseButtonEvent,
 		emboss = false,
 		--properties for a rounded rectangle button...
@@ -822,7 +823,7 @@ function displayAboutSetup()
 	backButton = widget.newButton
 	{
 		label = "Back",
-		labelColor = { default={ 1, 1, 1 }, over={ 0, 0, 0, 0.5 } },
+		labelColor = { default=backgroundColor, over={ 0, 0, 0, 0.5 } },
 		onEvent = handleBackButtonEvent,
 		emboss = false,
 		--properties for a rounded rectangle button...
@@ -877,7 +878,7 @@ function displayMainMenu()
 	setupButton = widget.newButton
 	{
 		label = "Setup Game",
-		labelColor = { default={ 1, 1, 1 }, over={ 0, 0, 0, 0.5 } },
+		labelColor = { default=backgroundColor, over={ 0, 0, 0, 0.5 } },
 		onEvent = handleSetupButtonEvent,
 		emboss = false,
 		--properties for a rounded rectangle button...
@@ -894,7 +895,7 @@ function displayMainMenu()
 	aboutButton = widget.newButton
 	{
 		label = "About",
-		labelColor = { default={ 1, 1, 1 }, over={ 0, 0, 0, 0.5 } },
+		labelColor = { default=backgroundColor, over={ 0, 0, 0, 0.5 } },
 		onEvent = handleAboutButtonEvent,
 		emboss = false,
 		--properties for a rounded rectangle button...
